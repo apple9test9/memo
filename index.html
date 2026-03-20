@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>指示メモトレーニング</title>
+    <style>
+        /* 全体スタイル */
+        body {
+            margin:0;
+            font-family:sans-serif;
+            background:linear-gradient(135deg,#1f1c2c,#928dab);
+            color:white;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+
+        .container {
+            width:600px;
+            background:rgba(255,255,255,0.1);
+            padding:25px;
+            border-radius:15px;
+            box-shadow:0 8px 16px rgba(0,0,0,0.3);
+        }
+
+        h2 { text-align:center; margin-top:0; }
+
+        #problemNo {
+            font-weight:bold;
+            margin-bottom:15px;
+            font-size:18px;
+            text-align:center;
+        }
+
+        button {
+            width:100%;
+            padding:12px;
+            margin-top:10px;
+            border:none;
+            border-radius:10px;
+            cursor:pointer;
+            font-size:16px;
+        }
+
+        .play { background:#00e6a7; color:#000; }
+        .next { background:#3498db; color:white; }
+        .copy { background:#f39c12; color:#000; }
+        .mail { background:#ff6f61; color:white; display:none; } /* 初期は非表示 */
+
+        textarea {
+            width:100%;
+            height:120px;
+            margin-top:10px;
+            padding:10px;
+            border-radius:8px;
+            border:none;
+            font-size:16px;
+            resize:none;
+        }
+
+        .count { text-align:right; font-size:14px; margin-top:5px; }
+        #copyMessage { margin-top:10px; font-size:14px; color:#00ffcc; text-align:center; display:none; }
+
+        select {
+            width:100%;
+            padding:8px;
+            margin-top:10px;
+            border-radius:8px;
+            border:none;
+            font-size:16px;
+        }
+
+        #openChatGPT {
+            display:block;
+            text-align:center;
+            margin-top:10px;
+            font-size:16px;
+            color:#00e6a7;
+            text-decoration:underline;
+            cursor:pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>📝 指示メモトレーニング</h2>
+    <div id="problemNo">問題：1</div>
+
+    <!-- 再生スピード選択 -->
+    <select id="speedSelect">
+        <option value="0.7">初級：スロー再生</option>
+        <option value="1.0" selected>普通：ノーマル再生</option>
+    </select>
+
+    <!-- 音声再生ボタン -->
+    <button class="play" onclick="playVoice()">▶ 指示を聞く</button>
+    <div class="count">再生：<span id="count">0</span>/3</div>
+
+    <!-- メモ入力欄 -->
+    <textarea id="memo" placeholder="ここにメモを入力"></textarea>
+
+    <!-- ChatGPTを開く -->
+    <div id="openChatGPT" onclick="openChatGPTTab()">初回クリックでChatGPTを開く</div>
+
+    <!-- ChatGPTコピー -->
+    <button class="copy" id="copyToChatGPT">問題＋メモをコピーしてChatGPTに送信</button>
+    <div id="copyMessage">コピーしました！ChatGPTタブに貼り付けて送信してください。</div>
+
+    <!-- 次の問題へ -->
+    <button class="next" onclick="nextProblem()">次の問題へ</button>
+
+    <!-- 職員へ送信ボタン（最終問題後に表示） -->
+    <button class="mail" id="sendMailBtn" onclick="sendMail()">職員に送信</button>
+</div>
+
+<script>
+    /*************
+     * 問題データ *
+     * audio: 音声ファイル
+     * text: 採点用の文章
+     *************/
+    let problems = [
+        {
+            audio:"boss1.mp3",
+            text:`今いい?時間ないからまとめて言うね
+まず会議室、午後で空いてるとこ押さえてほしいんだけど
+できればプロジェクター使えるとこね、それとこの資料。5部コピーして会議用にまとめてホチキスト止めで
+あと15時に来客あるから受付お願い多分5分くらい早めに来ると思うからそのつもりで
+終わったら声かけて`
+        },
+        {
+            audio:"boss2.mp3",
+            text:`急ぎでお願い A社に電話して納期がいつになるか確認してほしい
+それと Bさんに明日の打ち合わせを15時からに変更できるか聞いておいて
+あとこの書類ざっとでいいから不備ないかチェックお願い`
+        },
+        {
+            audio:"boss3.mp3",
+            text:`時間ないからまとめて言うね
+まずこのデータいらない行削除して csv で保存して
+それとプリンターのトナー切れてるから交換しておいて
+あと13時からの会議資料足りてるか確認お願い`
+        },
+        {
+            audio:"boss4.mp3",
+            text:`これをお願い倉庫にある在庫数ざっとでいいから確認してメモにまとめて
+それとこの封筒宛名書いて3通分発送準備しておいて
+あと冷蔵庫のお茶来客用に補充お願い`
+        },
+        {
+            audio:"boss5.mp3",
+            text:`さっきの変更なんだけど15時の会議キャンセルになったから会議室の予約はいらない
+それと資料は印刷しなくていいから参加者にメールで送っておいて`
+        }
+    ];
+
+    /*************
+     * 変数定義 *
+     *************/
+    let count=0;                     // 再生回数カウント
+    let LIMIT=3;                      // 最大再生回数
+    let problemIndex=0;               // 現在の問題番号
+    let currentProblem;               // 現在の問題
+    let completedAnswers=[];          // 利用者が書いたメモを格納
+    let audioPlayer = new Audio();    // 音声再生用
+    let mailButtonShown = false;      // 職員送信ボタン表示済みフラグ
+
+    /*************
+     * 配列をシャッフル *
+     *************/
+    function shuffleArray(array){
+        for(let i=array.length-1; i>0; i--){
+            const j=Math.floor(Math.random()*(i+1));
+            [array[i], array[j]] = [array[j], array[i]];
+        }
+        return array;
+    }
+
+    // 初回ロード時に問題をランダム化
+    let shuffledProblems = shuffleArray([...problems]);
+    currentProblem = shuffledProblems[0];
+
+    /*************
+     * 音声再生 *
+     *************/
+    function playVoice(){
+        if(count >= LIMIT){
+            alert("再生は3回まで！");
+            return;
+        }
+        count++;
+        document.getElementById("count").innerText = count;
+
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        if(currentProblem.audio) audioPlayer.src = currentProblem.audio;
+
+        audioPlayer.playbackRate = parseFloat(document.getElementById("speedSelect").value);
+        audioPlayer.play();
+    }
+
+    /*************
+     * 次の問題へ *
+     *************/
+    function nextProblem(){
+        saveCurrentMemo(); // 現在の問題のメモを保存
+
+        problemIndex++;
+        if(problemIndex >= shuffledProblems.length) problemIndex = 0;
+
+        currentProblem = shuffledProblems[problemIndex];
+        document.getElementById("problemNo").innerText = "問題：" + (problemIndex+1);
+
+        count = 0;
+        document.getElementById("count").innerText = 0;
+        document.getElementById("memo").value = "";
+        document.getElementById("copyMessage").style.display = "none";
+    }
+
+    /*************
+     * 現在のメモを保存（completedAnswers配列に格納）
+     * 最終問題終了後にメール送信ボタン表示
+     *************/
+    function saveCurrentMemo(){
+        // 未追加の場合のみ配列に追加
+        if(completedAnswers.length <= problemIndex){
+            const memoText = document.getElementById("memo").value.trim();
+            completedAnswers.push(
+                `【問題 ${problemIndex+1}】\n${currentProblem.text}\n\n【メモ】\n${memoText}`
+            );
+        }
+
+        // 最終問題終了時に職員送信ボタン表示
+        if(problemIndex === 2 && !mailButtonShown){
+            document.getElementById("sendMailBtn").style.display = "block";
+            mailButtonShown = true;
+        }
+    }
+
+    /*************
+     * ChatGPTへコピー
+     *************/
+    document.getElementById("copyToChatGPT").addEventListener("click", ()=>{
+        const problemText = currentProblem.text;
+        const memoText = document.getElementById("memo").value;
+
+        const fullText = `上司指示トレーニングです。\n\n【問題】\n${problemText}\n\n【あなたのメモ】\n${memoText}\n\n【お願い】\n- 上のメモを100点満点で採点してください\n- 不足している指示や間違いを指摘してください\n- 文章はまったく同じでなくてもいいです要点だけしっかり押さえられてれば\n- 良い点や改善点もコメントしてください\n- 点数とコメントを必ず書いてください`;
+
+        navigator.clipboard.writeText(fullText).then(()=>{
+            document.getElementById("copyMessage").style.display = "block";
+        }).catch(()=>{
+            alert("コピーに失敗しました。ブラウザの許可を確認してください");
+        });
+    });
+
+    /*************
+     * 職員にメール送信
+     *************/
+    function sendMail(){
+        const subject = encodeURIComponent("指示メモトレーニングの結果（ご自身のお名前）");
+        const body = encodeURIComponent(completedAnswers.join("\n\n"));
+        window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=&su=${subject}&body=${body}`);
+    }
+
+    /*************
+     * ChatGPTタブを開く
+     *************/
+    let chatGPTWindow = null;
+    function openChatGPTTab(){
+        if(!chatGPTWindow || chatGPTWindow.closed){
+            chatGPTWindow = window.open("https://chat.openai.com/", "_blank");
+        } else {
+            chatGPTWindow.focus();
+        }
+    }
+</script>
+
+</body>
+</html>
