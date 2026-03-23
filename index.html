@@ -13,11 +13,16 @@
             display:flex;
             justify-content:center;
             align-items:center;
-            height:100vh;
+            height:auto;
+            min-height:100vh;
+            padding:10px;
+            box-sizing:border-box; 
         }
 
         .container {
-            width:600px;
+            position:relative; 
+            width:90%;
+            max-width:600px;
             background:rgba(255,255,255,0.1);
             padding:25px;
             border-radius:15px;
@@ -59,8 +64,19 @@
             resize:none;
         }
 
-        .count { text-align:right; font-size:14px; margin-top:5px; }
-        #copyMessage { margin-top:10px; font-size:14px; color:#00ffcc; text-align:center; display:none; }
+        .count { 
+            text-align:right; 
+            font-size:14px; 
+            margin-top:5px; 
+        }
+        
+        #copyMessage { 
+            margin-top:10px; 
+            font-size:14px; 
+            color:#00ffcc; 
+            text-align:center; 
+            display:none; 
+        }
 
         select {
             width:100%;
@@ -80,12 +96,79 @@
             text-decoration:underline;
             cursor:pointer;
         }
+
+        /* 手順書モーダル */
+        #manualSide {
+            position:fixed;
+            top:0;
+            right:-100%;
+            width:400px;
+            height:100%;
+            background:#222;
+            padding:20px 20px 40px;
+            transition:0.3s;
+            z-index:9999;
+
+            overflow-y:auto;
+            box-shadow:-5px 0 20px rgba(0,0,0,0.5);
+        }
+
+        #manualSide.active {
+            right:0;
+        }
+
+        .manualBtn {
+            position:absolute;
+            top:10px;
+            right:10px;
+            width:35px;
+            height:35px;
+            border-radius:50%;
+            background:#9b59b6;
+            color:white;
+            font-size:18px;
+            font-weight:bold;
+
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
+        #manualSide p {
+            margin:2px 0;
+            line-height:1.4;
+            font-size:13px;
+        }
+
+        #manualSide p b {
+            display:block;
+            margin-top:8px;
+            margin-bottom:2px;
+            font-size:15px;
+        }
+        .closeBtn {
+            position:absolute;
+            top:10px;
+            left:10px;
+            width:30px;
+            height:30px;
+            border:none;
+            border-radius:50%;
+            background:#ff6f61;
+            color:white;
+            font-size:18px;
+            cursor:pointer;
+
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>📝 指示メモトレーニング</h2>
+    <button class="manualBtn" onclick="toggleManual()">？</button>
     <div id="problemNo">問題：1</div>
 
     <!-- 再生スピード選択 -->
@@ -113,6 +196,45 @@
 
     <!-- 職員へ送信ボタン（最終問題後に表示） -->
     <button class="mail" id="sendMailBtn" onclick="sendMail()">職員に送信</button>
+</div>
+
+<div id="manualSide">
+    <button class="closeBtn" onclick="toggleManual()">×</button>
+    <h2>📘 使い方</h2>
+
+    <p><b>【音声スピードの変更】</b></p>
+    <p>通常は普通でOK。速い場合はスローにしてください。</p>
+    <hr>
+
+    <p><b>【▶ 指示を聞く】ボタン</b></p>
+    <p>音声指示が流れます。</p>
+    <p>※最大3回まで再生できます</p>
+    <hr>
+
+    <p><b>【ここにメモを入力】入力エリア</b></p>
+    <p>音声指示の内容を入力します。</p>
+    <p>※要点が抑えられていれば大丈夫です。</p>
+    <hr>
+
+    <p><b>【初回クリックでChatGPTを開く】リンク</b></p>
+    <p>ブラウザの別タブでChatGPTが開きます。初回だけクリック</p>
+    <hr>
+
+    <p><b>【問題＋メモをコピーしてChatGPTに送信】ボタン</b></p>
+    <p>クリックするとメモ内容がコピーされます、</p>
+    <p>ChatGPTに貼り付けてフィードバックしてください。</p>
+    <hr>
+
+    <p><b>【次の問題へ】ボタン</b></p>
+    <p>次の問題に進みます。</p>
+    <p>※3問終了で「職員に送信」ボタンが表示されます</p>
+    <hr>
+
+    <p><b>【職員に送信】ボタン</b></p>
+    <p>別タブでGMAILが起動します。</p>
+    <p>件名：（ご自身のお名前）をご自身のお名前に変更 例：（山田）</p>
+    <p>宛先：nippou@apple-osaka.com に送信してください。</p>
+
 </div>
 
 <script>
@@ -299,6 +421,11 @@
         } else {
             chatGPTWindow.focus();
         }
+    }
+
+    function toggleManual(){
+        const panel = document.getElementById("manualSide");
+        panel.classList.toggle("active");
     }
 </script>
 
